@@ -1,0 +1,109 @@
+<div class="row-fluid">
+
+    <div style="margin-bottom:16px;">
+        <h3 style="margin:0 0 4px;"><i class="fa fa-bell"></i> Layer Notify</h3>
+        <span style="color:#888;font-size:12px;">Notificações e comandos GCODE por camada</span>
+    </div>
+
+    <!-- ── Camadas ── -->
+    <div class="span8">
+        <h4 style="margin-top:0;">Camadas configuradas</h4>
+
+        <p data-bind="visible: layerList().length === 0" style="color:#888;">
+            Nenhuma camada configurada. Vá em <strong>Settings → Layer Notify</strong> para adicionar.
+        </p>
+
+        <table data-bind="visible: layerList().length > 0"
+               class="table table-striped table-bordered table-condensed">
+            <thead>
+                <tr>
+                    <th style="width:90px;">Camada</th>
+                    <th>Comando GCODE</th>
+                    <th style="width:110px;text-align:center;">Status</th>
+                    <th style="width:60px;text-align:center;">Ativo</th>
+                </tr>
+            </thead>
+            <tbody data-bind="foreach: layerList">
+                <tr data-bind="css: { muted: !enabled() }">
+                    <td style="vertical-align:middle;">
+                        <span class="label" style="font-size:13px;padding:4px 10px;"
+                              data-bind="text: layer, css: {
+                                  'label-success': $root.isTriggered(layer()),
+                                  'label-info':    !$root.isTriggered(layer()) && enabled(),
+                                  'label-default': !enabled()
+                              }"></span>
+                    </td>
+                    <td style="vertical-align:middle;">
+                        <code data-bind="visible: command() !== '', text: command"
+                              style="font-size:12px;"></code>
+                        <span data-bind="visible: command() === ''"
+                              style="color:#aaa;font-size:12px;font-style:italic;">Só notificação</span>
+                    </td>
+                    <td style="text-align:center;vertical-align:middle;">
+                        <span data-bind="visible: $root.isTriggered(layer())" style="color:#5cb85c;">
+                            <i class="fa fa-check-circle"></i> Disparou
+                        </span>
+                        <span data-bind="visible: !$root.isTriggered(layer()) && enabled()" style="color:#aaa;">
+                            <i class="fa fa-clock-o"></i> Aguardando
+                        </span>
+                        <span data-bind="visible: !enabled()" style="color:#ddd;">
+                            <i class="fa fa-ban"></i> Inativo
+                        </span>
+                    </td>
+                    <td style="text-align:center;vertical-align:middle;">
+                        <i class="fa fa-check-circle" style="color:#5cb85c;font-size:16px;"
+                           data-bind="visible: enabled()"></i>
+                        <i class="fa fa-ban" style="color:#ccc;font-size:16px;"
+                           data-bind="visible: !enabled()"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="color:#888;font-size:12px;margin-top:4px;">
+            <i class="fa fa-info-circle"></i>
+            Para editar as camadas vá em <strong>Settings → Layer Notify</strong>.
+            Os indicadores de status reiniciam a cada nova impressão.
+        </p>
+    </div>
+
+    <!-- ── Som ── -->
+    <div class="span4">
+        <h4 style="margin-top:0;"><i class="fa fa-volume-up"></i> Alerta sonoro</h4>
+        <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:14px;">
+
+            <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+                <label style="margin:0;font-weight:bold;">Ativado</label>
+                <span data-bind="visible:  settingsViewModel.settings.plugins.layer_notify.sound_enabled()"
+                      style="color:#5cb85c;"><i class="fa fa-check-circle"></i> Sim</span>
+                <span data-bind="visible: !settingsViewModel.settings.plugins.layer_notify.sound_enabled()"
+                      style="color:#aaa;"><i class="fa fa-ban"></i> Não</span>
+            </div>
+
+            <div data-bind="visible: settingsViewModel.settings.plugins.layer_notify.sound_enabled()">
+                <div style="font-size:12px;color:#555;margin-bottom:4px;">
+                    <strong>Tipo:</strong>
+                    <span data-bind="text: {
+                        single: 'Um bip', triple: 'Três bips',
+                        alarm: 'Alarme alternado', rising: 'Tom crescente'
+                    }[settingsViewModel.settings.plugins.layer_notify.sound_type()] || ''"></span>
+                </div>
+                <div style="font-size:12px;color:#555;margin-bottom:12px;">
+                    <strong>Volume:</strong>
+                    <span data-bind="text: Math.round(settingsViewModel.settings.plugins.layer_notify.sound_volume() * 100) + '%'"></span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-small" style="width:100%;"
+                    data-bind="click: previewSound">
+                <i class="fa fa-play"></i> Testar som agora
+            </button>
+
+            <hr style="margin:12px 0;">
+            <p style="font-size:11px;color:#aaa;margin:0;">
+                Altere as configurações em <strong>Settings → Layer Notify</strong>
+            </p>
+        </div>
+    </div>
+
+</div>

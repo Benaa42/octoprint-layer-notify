@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+
+# Dev preview (não faz parte do plugin)
+preview.html
+
+# Sidebar removido do plugin
+octoprint_layer_notify/templates/layer_notify_sidebar.jinja2
+
+# OS
+.DS_Store
+Thumbs.db

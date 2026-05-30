@@ -1,0 +1,88 @@
+<h4>Layer Notify</h4>
+<p style="color:#888;font-size:12px;">Dispara notificação e comando GCODE ao atingir camadas configuradas.</p>
+
+<h5>Camadas alvo</h5>
+<table class="table table-condensed table-bordered" style="margin-bottom:8px;">
+    <thead>
+        <tr>
+            <th style="width:80px;">Camada</th>
+            <th>Comando GCODE <span style="font-weight:normal;color:#888;">(opcional)</span></th>
+            <th style="width:70px;text-align:center;">Ativo</th>
+            <th style="width:90px;text-align:center;">Testar</th>
+            <th style="width:36px;"></th>
+        </tr>
+    </thead>
+    <tbody data-bind="foreach: layerList">
+        <tr>
+            <td><input type="number" class="input-mini" min="1" step="1"
+                       data-bind="value: layer" style="width:60px;"></td>
+            <td><input type="text" class="input-medium"
+                       data-bind="value: command" placeholder="ex: M600"></td>
+            <td style="text-align:center;vertical-align:middle;">
+                <input type="checkbox" data-bind="checked: enabled">
+            </td>
+            <td style="text-align:center;vertical-align:middle;">
+                <button class="btn btn-mini" data-bind="click: $root.testEntry">
+                    <i class="fa fa-bell"></i>
+                </button>
+            </td>
+            <td style="text-align:center;vertical-align:middle;">
+                <button class="btn btn-mini btn-danger" data-bind="click: $root.removeLayer">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<button class="btn btn-success btn-small" data-bind="click: addLayer">
+    <i class="fa fa-plus"></i> Adicionar camada
+</button>
+
+<hr style="margin:14px 0;">
+
+<h5><i class="fa fa-volume-up"></i> Alerta sonoro</h5>
+<div class="form-horizontal">
+    <div class="control-group">
+        <label class="control-label">Som ativado</label>
+        <div class="controls" style="padding-top:4px;">
+            <input type="checkbox"
+                   data-bind="checked: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
+        </div>
+    </div>
+    <div class="control-group"
+         data-bind="visible: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
+        <label class="control-label">Tipo de som</label>
+        <div class="controls">
+            <select class="input-medium"
+                    data-bind="value: settingsViewModel.settings.plugins.layer_notify.sound_type">
+                <option value="single">Um bip</option>
+                <option value="triple">Três bips</option>
+                <option value="alarm">Alarme alternado</option>
+                <option value="rising">Tom crescente</option>
+            </select>
+            <button class="btn btn-mini" style="margin-left:6px;"
+                    data-bind="click: previewSound">
+                <i class="fa fa-volume-up"></i> Ouvir
+            </button>
+        </div>
+    </div>
+    <div class="control-group"
+         data-bind="visible: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
+        <label class="control-label">Volume</label>
+        <div class="controls" style="display:flex;align-items:center;gap:8px;padding-top:4px;">
+            <input type="range" min="0" max="1" step="0.05" style="width:140px;"
+                   data-bind="value: settingsViewModel.settings.plugins.layer_notify.sound_volume">
+            <span style="color:#888;font-size:12px;min-width:36px;"
+                  data-bind="text: Math.round(settingsViewModel.settings.plugins.layer_notify.sound_volume() * 100) + '%'">
+            </span>
+        </div>
+    </div>
+</div>
+
+<hr style="margin:12px 0;">
+<div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:10px;font-size:12px;color:#666;">
+    <strong>Slicers suportados:</strong>
+    Cura (<code>;LAYER:X</code>) &nbsp;&#183;&nbsp; PrusaSlicer (<code>; layer X,</code>).<br>
+    Cada camada dispara somente uma vez por impressão.
+</div>
