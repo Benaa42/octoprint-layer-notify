@@ -146,11 +146,11 @@ $(function () {
             if (data.sound_enabled) _playSound(data.sound_type, data.sound_volume, data.sound_repeat);
 
             var cmdPart = data.command
-                ? "<br><small>Comando enviado: <code>" + data.command + "</code></small>"
+                ? "<br><small>Command sent: <code>" + data.command + "</code></small>"
                 : "";
             new PNotify({
                 title:   "Layer Notify",
-                text:    "Camada <strong>" + data.layer + "</strong> atingida!" + cmdPart,
+                text:    "Layer <strong>" + data.layer + "</strong> reached!" + cmdPart,
                 type:    "info",
                 hide:    false,
                 buttons: { closer: true, sticker: false },
@@ -158,8 +158,8 @@ $(function () {
             });
 
             _nativeNotify(
-                "Camada " + data.layer + " atingida!",
-                data.command ? "Comando: " + data.command : "Verifique a impressão."
+                "Layer " + data.layer + " reached!",
+                data.command ? "Command sent: " + data.command : "Check your print."
             );
         };
     }
@@ -178,11 +178,12 @@ $(function () {
 
     function _nativeNotify(title, body) {
         if (!("Notification" in window)) return;
+        var payload = { body: title + "\n" + body, icon: "/static/img/tentacle-20x20.png" };
         if (Notification.permission === "granted") {
-            new Notification("OctoPrint – Layer Notify", { body: title + "\n" + body });
+            new Notification("OctoPrint – Layer Notify", payload);
         } else if (Notification.permission === "default") {
             Notification.requestPermission().then(function (p) {
-                if (p === "granted") new Notification("OctoPrint – Layer Notify", { body: title + "\n" + body });
+                if (p === "granted") new Notification("OctoPrint – Layer Notify", payload);
             });
         }
     }

@@ -1,14 +1,14 @@
 <h4>Layer Notify</h4>
-<p style="color:#888;font-size:12px;">Dispara notificação e comando GCODE ao atingir camadas configuradas.</p>
+<p style="color:#888;font-size:12px;">Trigger notifications and GCODE commands when configured layers are reached.</p>
 
-<h5>Camadas alvo</h5>
+<h5>Target layers</h5>
 <table class="table table-condensed table-bordered" style="margin-bottom:8px;">
     <thead>
         <tr>
-            <th style="width:80px;">Camada</th>
-            <th>Comando GCODE <span style="font-weight:normal;color:#888;">(opcional)</span></th>
-            <th style="width:70px;text-align:center;">Ativo</th>
-            <th style="width:90px;text-align:center;">Testar</th>
+            <th style="width:80px;">Layer</th>
+            <th>GCODE Command <span style="font-weight:normal;color:#888;">(optional)</span></th>
+            <th style="width:70px;text-align:center;">Active</th>
+            <th style="width:90px;text-align:center;">Test</th>
             <th style="width:36px;"></th>
         </tr>
     </thead>
@@ -17,7 +17,7 @@
             <td><input type="number" class="input-mini" min="1" step="1"
                        data-bind="value: layer" style="width:60px;"></td>
             <td><input type="text" class="input-medium"
-                       data-bind="value: command" placeholder="ex: M600"></td>
+                       data-bind="value: command" placeholder="e.g. M600"></td>
             <td style="text-align:center;vertical-align:middle;">
                 <input type="checkbox" data-bind="checked: enabled">
             </td>
@@ -36,15 +36,15 @@
 </table>
 
 <button class="btn btn-success btn-small" data-bind="click: addLayer">
-    <i class="fa fa-plus"></i> Adicionar camada
+    <i class="fa fa-plus"></i> Add layer
 </button>
 
 <hr style="margin:14px 0;">
 
-<h5><i class="fa fa-volume-up"></i> Alerta sonoro</h5>
+<h5><i class="fa fa-volume-up"></i> Sound alert</h5>
 <div class="form-horizontal">
     <div class="control-group">
-        <label class="control-label">Som ativado</label>
+        <label class="control-label">Sound enabled</label>
         <div class="controls" style="padding-top:4px;">
             <input type="checkbox"
                    data-bind="checked: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
@@ -52,29 +52,29 @@
     </div>
     <div class="control-group"
          data-bind="visible: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
-        <label class="control-label">Tipo de som</label>
+        <label class="control-label">Sound type</label>
         <div class="controls">
             <select class="input-medium"
                     data-bind="value: settingsViewModel.settings.plugins.layer_notify.sound_type">
-                <option value="single">Um bip</option>
-                <option value="triple">Três bips</option>
-                <option value="alarm">Alarme alternado</option>
-                <option value="rising">Tom crescente</option>
+                <option value="single">Single beep</option>
+                <option value="triple">Triple beep</option>
+                <option value="alarm">Alternating alarm</option>
+                <option value="rising">Rising tone</option>
             </select>
             <button class="btn btn-mini" style="margin-left:6px;"
                     data-bind="click: previewSound">
-                <i class="fa fa-volume-up"></i> Ouvir
+                <i class="fa fa-volume-up"></i> Preview
             </button>
         </div>
     </div>
     <div class="control-group"
          data-bind="visible: settingsViewModel.settings.plugins.layer_notify.sound_enabled">
-        <label class="control-label">Repetições</label>
+        <label class="control-label">Repeat</label>
         <div class="controls" style="display:flex;align-items:center;gap:8px;padding-top:4px;">
             <input type="number" min="1" max="10" class="input-mini"
                    data-bind="value: settingsViewModel.settings.plugins.layer_notify.sound_repeat"
                    style="width:55px;">
-            <span style="color:#888;font-size:12px;">vez(es)</span>
+            <span style="color:#888;font-size:12px;">time(s)</span>
         </div>
     </div>
     <div class="control-group"
@@ -92,7 +92,7 @@
 
 <hr style="margin:12px 0;">
 <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:10px;font-size:12px;color:#666;">
-    <strong>Slicers suportados:</strong>
-    Cura (<code>;LAYER:X</code>) &nbsp;&#183;&nbsp; PrusaSlicer (<code>; layer X,</code>).<br>
-    Cada camada dispara somente uma vez por impressão.
+    <strong>Supported slicers:</strong>
+    Cura (<code>;LAYER:X</code>) &nbsp;&#183;&nbsp; PrusaSlicer (<code>; layer X,</code>) &nbsp;&#183;&nbsp; Any slicer (Z-move detection).<br>
+    Each layer fires only once per print job.
 </div>
