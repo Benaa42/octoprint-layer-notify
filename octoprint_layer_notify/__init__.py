@@ -11,34 +11,28 @@ class LayerNotifyPlugin(
     octoprint.plugin.EventHandlerPlugin,
 ):
     def __init__(self):
-        self._triggered = set()  # layers already fired this print
+        self._triggered    = set()   # layer numbers fired this print
+        self._current_z    = 0.0     # most recent Z coordinate seen
+        self._last_layer_z = 0.0     # Z of last confirmed layer change
+        self._z_layer_count = 0      # sequential layer counter (Z-based)
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
     def get_settings_defaults(self):
-        # layers: list of {layer: int, command: str, enabled: bool}
         return dict(
             layers=[],
             sound_enabled=True,
-            sound_type="triple",   # single | triple | alarm | rising
-            sound_volume=0.5,      # 0.0 – 1.0
+            sound_type="triple",
+            sound_volume=0.5,
+            sound_repeat=2,
         )
 
     # ── Templates ─────────────────────────────────────────────────────────────
 
     def get_template_configs(self):
         return [
-            dict(
-                type="settings",
-                template="layer_notify_settings.jinja2",
-                custom_bindings=True,
-            ),
-            dict(
-                type="tab",
-                template="layer_notify_tab.jinja2",
-                custom_bindings=True,
-                name="Layer Notify",
-            ),
+            dict(type="settings", template="layer_notify_settings.jinja2", custom_bindings=True),
+            dict(type="tab",      template="layer_notify_tab.jinja2",      custom_bindings=True, name="Layer Notify"),
         ]
 
     # ── Assets ────────────────────────────────────────────────────────────────
@@ -51,11 +45,12 @@ class LayerNotifyPlugin(
     def on_event(self, event, payload):
         if event in (Events.PRINT_STARTED, Events.PRINT_CANCELLED,
                      Events.PRINT_FAILED, Events.PRINT_DONE):
-            self._triggered = set()
-            # Notify JS to reset triggered indicators in sidebar
+            self._triggered     = set()
+            self._current_z     = 0.0
+            self._last_layer_z  = 0.0
+            self._z_layer_count = 0
             self._plugin_manager.send_plugin_message(
-                self._identifier,
-                dict(type="print_reset"),
+                self._identifier, dict(type="print_reset")
             )
 
     # ── GCODE hook ────────────────────────────────────────────────────────────
@@ -69,46 +64,80 @@ class LayerNotifyPlugin(
 
         layer = None
 
-        # Cura / Ultimaker: ;LAYER:0  (0-indexed → 1-indexed)
+        # ── Method 1: slicer layer comments ───────────────────────────────────
+        # Cura / Ultimaker Cura: ;LAYER:0  (0-indexed → convert to 1-indexed)
         if cmd.upper().startswith(";LAYER:"):
             try:
                 layer = int(cmd.split(":")[1].strip()) + 1
+                self._logger.debug("LayerNotify comment layer: %d", layer)
             except (ValueError, IndexError):
                 pass
 
-        # PrusaSlicer / SuperSlicer: ; layer 1, Z = 0.2
+        # PrusaSlicer / SuperSlicer: ; layer 1, Z = 0.2  (1-indexed)
         elif cmd.lower().startswith("; layer "):
             try:
-                layer = int(cmd.split()[2].strip(","))
+                layer = int(cmd.split()[2].strip(",."))
+                self._logger.debug("LayerNotify PrusaSlicer layer: %d", layer)
             except (ValueError, IndexError):
                 pass
+
+        # ── Method 2: Z-movement detection (any slicer) ───────────────────────
+        # Tracks Z coordinate and counts a new layer when extrusion happens
+        # at a Z level higher than the previous layer — avoids Z-hop false positives.
+        if layer is None and gcode in ("G0", "G1", "G00", "G01"):
+            z_val  = None
+            has_e  = False
+            for part in cmd.upper().split():
+                if part.startswith("Z"):
+                    try:
+                        z_val = float(part[1:])
+                    except ValueError:
+                        pass
+                elif part.startswith("E"):
+                    has_e = True
+
+            if z_val is not None:
+                self._current_z = z_val
+
+            # New layer = first extrusion at a Z higher than the last layer Z
+            if has_e and self._current_z > self._last_layer_z + 0.01:
+                self._last_layer_z = self._current_z
+                self._z_layer_count += 1
+                layer = self._z_layer_count
+                self._logger.debug(
+                    "LayerNotify Z-based layer: %d (Z=%.3f)", layer, self._current_z
+                )
 
         if layer is not None:
             self._process_layer(layer)
 
+    # ── Layer processing ──────────────────────────────────────────────────────
+
     def _process_layer(self, layer_num):
+        layer_num = int(layer_num)
+
         if layer_num in self._triggered:
             return
 
         layers = self._settings.get(["layers"]) or []
+
         for entry in layers:
             if not entry.get("enabled", True):
                 continue
-            if entry.get("layer") != layer_num:
+            # Coerce both sides to int to avoid string vs int mismatch
+            if int(entry.get("layer", -1)) != layer_num:
                 continue
 
             self._triggered.add(layer_num)
             command = (entry.get("command") or "").strip()
 
             self._logger.info(
-                "Layer %d reached. GCODE command: %s", layer_num, command or "—"
+                "LayerNotify: layer %d reached — command: %s", layer_num, command or "none"
             )
 
-            # Send GCODE command to printer if configured
             if command and self._printer and self._printer.is_printing():
                 self._printer.commands([command])
 
-            # Push notification to browser (includes sound settings so JS can play)
             self._plugin_manager.send_plugin_message(
                 self._identifier,
                 dict(
@@ -118,16 +147,15 @@ class LayerNotifyPlugin(
                     sound_enabled=self._settings.get_boolean(["sound_enabled"]),
                     sound_type=self._settings.get(["sound_type"]),
                     sound_volume=self._settings.get_float(["sound_volume"]),
+                    sound_repeat=self._settings.get_int(["sound_repeat"]),
                 ),
             )
-            break  # one entry per layer is enough
+            break
 
     # ── REST API ──────────────────────────────────────────────────────────────
 
     def on_api_get(self, request):
-        return flask.jsonify(
-            layers=self._settings.get(["layers"]) or []
-        )
+        return flask.jsonify(layers=self._settings.get(["layers"]) or [])
 
     def get_api_commands(self):
         return dict(test_notify=["layer", "command"])
@@ -143,6 +171,7 @@ class LayerNotifyPlugin(
                     sound_enabled=self._settings.get_boolean(["sound_enabled"]),
                     sound_type=self._settings.get(["sound_type"]),
                     sound_volume=self._settings.get_float(["sound_volume"]),
+                    sound_repeat=self._settings.get_int(["sound_repeat"]),
                 ),
             )
         return flask.jsonify({})

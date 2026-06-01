@@ -27,8 +27,22 @@ $(function () {
         rising: function (v) { var c = _getCtx(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.type = "sine"; o.frequency.setValueAtTime(300, c.currentTime); o.frequency.exponentialRampToValueAtTime(1200, c.currentTime + 0.8); g.gain.setValueAtTime(v, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.8); o.start(c.currentTime); o.stop(c.currentTime + 0.8); }
     };
 
-    function _playSound(type, volume) {
-        try { (_sounds[type] || _sounds.triple)(volume || 0.5); } catch (e) { console.warn("LayerNotify sound error", e); }
+    // Duration in ms of each sound type (gap between repetitions)
+    var _soundDuration = { single: 700, triple: 1000, alarm: 1600, rising: 1100 };
+
+    function _playSound(type, volume, repeat) {
+        var fn    = _sounds[type] || _sounds.triple;
+        var vol   = volume || 0.5;
+        var times = Math.max(1, Math.min(parseInt(repeat, 10) || 1, 10));
+        var gap   = _soundDuration[type] || 1000;
+
+        for (var i = 0; i < times; i++) {
+            (function (index) {
+                setTimeout(function () {
+                    try { fn(vol); } catch (e) {}
+                }, index * gap);
+            })(i);
+        }
     }
 
     // Helper: safe access to plugin settings observable
@@ -108,8 +122,12 @@ $(function () {
 
         self.previewSound = function () {
             var ps = _ps(self);
-            if (!ps) { _playSound("triple", 0.5); return; }
-            _playSound(ko.unwrap(ps.sound_type), parseFloat(ko.unwrap(ps.sound_volume)) || 0.5);
+            if (!ps) { _playSound("triple", 0.5, 1); return; }
+            _playSound(
+                ko.unwrap(ps.sound_type),
+                parseFloat(ko.unwrap(ps.sound_volume)) || 0.5,
+                parseInt(ko.unwrap(ps.sound_repeat), 10) || 1
+            );
         };
 
         // ── Plugin messages ────────────────────────────────────────────────────
@@ -125,7 +143,7 @@ $(function () {
 
             self.triggeredLayers.push(parseInt(data.layer, 10));
 
-            if (data.sound_enabled) _playSound(data.sound_type, data.sound_volume);
+            if (data.sound_enabled) _playSound(data.sound_type, data.sound_volume, data.sound_repeat);
 
             var cmdPart = data.command
                 ? "<br><small>Comando enviado: <code>" + data.command + "</code></small>"
