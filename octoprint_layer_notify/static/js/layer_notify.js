@@ -69,7 +69,8 @@ $(function () {
             $.ajax({
                 url:     "/api/plugin/layer_notify",
                 type:    "GET",
-                headers: { "X-Api-Key": UI_API_KEY }
+                headers: { "X-Api-Key": UI_API_KEY },
+                withCredentials: true
             }).done(function (data) {
                 _applyLayers(data.layers || []);
             }).fail(function () {

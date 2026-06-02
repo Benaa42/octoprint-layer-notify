@@ -9,6 +9,7 @@ class LayerNotifyPlugin(
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.SimpleApiPlugin,
     octoprint.plugin.EventHandlerPlugin,
+    octoprint.plugin.BlueprintPlugin,
 ):
     def __init__(self):
         self._triggered    = set()   # layer numbers fired this print
@@ -154,6 +155,9 @@ class LayerNotifyPlugin(
 
     # ── REST API ──────────────────────────────────────────────────────────────
 
+    def is_api_protected(self):
+        return True
+
     def on_api_get(self, request):
         return flask.jsonify(layers=self._settings.get(["layers"]) or [])
 
@@ -176,6 +180,26 @@ class LayerNotifyPlugin(
             )
         return flask.jsonify({})
 
+    # ── Software update hook ───────────────────────────────────────────────────
+
+    def get_update_information(self):
+        return dict(
+            layer_notify=dict(
+                displayName="Layer Notify",
+                displayVersion=self._plugin_version,
+                type="github_release",
+                user="Benaa42",
+                repo="octoprint-layer-notify",
+                current=self._plugin_version,
+                pip="https://github.com/Benaa42/octoprint-layer-notify/archive/{target_version}.zip",
+            )
+        )
+
+    # ── Jinja2 template autoescaping ──────────────────────────────────────────
+
+    def is_template_autoescaped(self):
+        return True
+
 
 # ── Plugin registration ────────────────────────────────────────────────────────
 
@@ -190,4 +214,5 @@ def __plugin_load__():
     global __plugin_hooks__
     __plugin_hooks__ = {
         "octoprint.comm.protocol.gcode.queuing": __plugin_implementation__.gcode_queuing_hook,
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
     }
