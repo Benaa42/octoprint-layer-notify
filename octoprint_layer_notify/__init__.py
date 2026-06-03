@@ -9,13 +9,12 @@ class LayerNotifyPlugin(
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.SimpleApiPlugin,
     octoprint.plugin.EventHandlerPlugin,
-    octoprint.plugin.BlueprintPlugin,
 ):
     def __init__(self):
-        self._triggered    = set()   # layer numbers fired this print
-        self._current_z    = 0.0     # most recent Z coordinate seen
-        self._last_layer_z = 0.0     # Z of last confirmed layer change
-        self._z_layer_count = 0      # sequential layer counter (Z-based)
+        self._triggered     = set()
+        self._current_z     = 0.0
+        self._last_layer_z  = 0.0
+        self._z_layer_count = 0
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
@@ -36,6 +35,9 @@ class LayerNotifyPlugin(
             dict(type="tab",      template="layer_notify_tab.jinja2",      custom_bindings=True, name="Layer Notify"),
         ]
 
+    def is_template_autoescaped(self):
+        return True
+
     # ── Assets ────────────────────────────────────────────────────────────────
 
     def get_assets(self):
@@ -54,63 +56,41 @@ class LayerNotifyPlugin(
                 self._identifier, dict(type="print_reset")
             )
 
-    # ── GCODE hook ────────────────────────────────────────────────────────────
+    # ── GCODE hook — Z-movement layer detection ───────────────────────────────
+    # OctoPrint strips comment lines before the queuing hook, so layer comments
+    # (;LAYER:X) are never received here. Layer changes are detected by tracking
+    # the Z coordinate: a new layer is counted on the first extrusion move at a
+    # Z level higher than the previous layer, which avoids false positives from
+    # Z-hops (travel moves that lift Z without extruding).
 
     def gcode_queuing_hook(
         self, comm_instance, phase, cmd, cmd_type, gcode,
         subcode=None, tags=None, *args, **kwargs
     ):
-        if not cmd:
+        if not cmd or gcode not in ("G0", "G1", "G00", "G01"):
             return
 
-        layer = None
+        z_val = None
+        has_e = False
+        for part in cmd.upper().split():
+            if part.startswith("Z"):
+                try:
+                    z_val = float(part[1:])
+                except ValueError:
+                    pass
+            elif part.startswith("E"):
+                has_e = True
 
-        # ── Method 1: slicer layer comments ───────────────────────────────────
-        # Cura / Ultimaker Cura: ;LAYER:0  (0-indexed → convert to 1-indexed)
-        if cmd.upper().startswith(";LAYER:"):
-            try:
-                layer = int(cmd.split(":")[1].strip()) + 1
-                self._logger.debug("LayerNotify comment layer: %d", layer)
-            except (ValueError, IndexError):
-                pass
+        if z_val is not None:
+            self._current_z = z_val
 
-        # PrusaSlicer / SuperSlicer: ; layer 1, Z = 0.2  (1-indexed)
-        elif cmd.lower().startswith("; layer "):
-            try:
-                layer = int(cmd.split()[2].strip(",."))
-                self._logger.debug("LayerNotify PrusaSlicer layer: %d", layer)
-            except (ValueError, IndexError):
-                pass
-
-        # ── Method 2: Z-movement detection (any slicer) ───────────────────────
-        # Tracks Z coordinate and counts a new layer when extrusion happens
-        # at a Z level higher than the previous layer — avoids Z-hop false positives.
-        if layer is None and gcode in ("G0", "G1", "G00", "G01"):
-            z_val  = None
-            has_e  = False
-            for part in cmd.upper().split():
-                if part.startswith("Z"):
-                    try:
-                        z_val = float(part[1:])
-                    except ValueError:
-                        pass
-                elif part.startswith("E"):
-                    has_e = True
-
-            if z_val is not None:
-                self._current_z = z_val
-
-            # New layer = first extrusion at a Z higher than the last layer Z
-            if has_e and self._current_z > self._last_layer_z + 0.01:
-                self._last_layer_z = self._current_z
-                self._z_layer_count += 1
-                layer = self._z_layer_count
-                self._logger.debug(
-                    "LayerNotify Z-based layer: %d (Z=%.3f)", layer, self._current_z
-                )
-
-        if layer is not None:
-            self._process_layer(layer)
+        if has_e and self._current_z > self._last_layer_z + 0.01:
+            self._last_layer_z = self._current_z
+            self._z_layer_count += 1
+            self._logger.debug(
+                "LayerNotify: layer %d detected (Z=%.3f)", self._z_layer_count, self._current_z
+            )
+            self._process_layer(self._z_layer_count)
 
     # ── Layer processing ──────────────────────────────────────────────────────
 
@@ -120,12 +100,9 @@ class LayerNotifyPlugin(
         if layer_num in self._triggered:
             return
 
-        layers = self._settings.get(["layers"]) or []
-
-        for entry in layers:
+        for entry in (self._settings.get(["layers"]) or []):
             if not entry.get("enabled", True):
                 continue
-            # Coerce both sides to int to avoid string vs int mismatch
             if int(entry.get("layer", -1)) != layer_num:
                 continue
 
@@ -194,11 +171,6 @@ class LayerNotifyPlugin(
                 pip="https://github.com/Benaa42/octoprint-layer-notify/archive/{target_version}.zip",
             )
         )
-
-    # ── Jinja2 template autoescaping ──────────────────────────────────────────
-
-    def is_template_autoescaped(self):
-        return True
 
 
 # ── Plugin registration ────────────────────────────────────────────────────────

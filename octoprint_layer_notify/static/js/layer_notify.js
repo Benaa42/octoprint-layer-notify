@@ -66,16 +66,13 @@ $(function () {
         // ── Startup: fetch layers from server so the tab has data immediately ──
 
         self.onStartupComplete = function () {
-            $.ajax({
-                url:     "/api/plugin/layer_notify",
-                type:    "GET",
-                headers: { "X-Api-Key": UI_API_KEY },
-                withCredentials: true
-            }).done(function (data) {
-                _applyLayers(data.layers || []);
-            }).fail(function () {
-                console.warn("LayerNotify: failed to fetch layers from API");
-            });
+            OctoPrint.simpleApiGet("layer_notify")
+                .done(function (data) {
+                    _applyLayers(data.layers || []);
+                })
+                .fail(function () {
+                    console.warn("LayerNotify: failed to fetch layers from API");
+                });
         };
 
         // ── Settings dialog: serialize before save ─────────────────────────────
@@ -108,16 +105,9 @@ $(function () {
         };
 
         self.testEntry = function (item) {
-            $.ajax({
-                url:         "/api/plugin/layer_notify",
-                type:        "POST",
-                contentType: "application/json",
-                headers:     { "X-Api-Key": UI_API_KEY },
-                data: JSON.stringify({
-                    command: "test_notify",
-                    layer:   parseInt(ko.unwrap(item.layer), 10),
-                    command_gcode: ko.unwrap(item.command)
-                })
+            OctoPrint.simpleApiCommand("layer_notify", "test_notify", {
+                layer:         parseInt(ko.unwrap(item.layer), 10),
+                command_gcode: ko.unwrap(item.command)
             });
         };
 
@@ -147,15 +137,16 @@ $(function () {
             if (data.sound_enabled) _playSound(data.sound_type, data.sound_volume, data.sound_repeat);
 
             var cmdPart = data.command
-                ? "<br><small>Command sent: <code>" + data.command + "</code></small>"
+                ? "<br><small>Command sent: <code>" + _escHtml(data.command) + "</code></small>"
                 : "";
             new PNotify({
-                title:   "Layer Notify",
-                text:    "Layer <strong>" + data.layer + "</strong> reached!" + cmdPart,
-                type:    "info",
-                hide:    false,
-                buttons: { closer: true, sticker: false },
-                icon:    "fa fa-print"
+                title:       "Layer Notify",
+                text:        "Layer <strong>" + _escHtml(String(data.layer)) + "</strong> reached!" + cmdPart,
+                type:        "info",
+                hide:        false,
+                buttons:     { closer: true, sticker: false },
+                icon:        "fa fa-print",
+                text_escape: false
             });
 
             _nativeNotify(
@@ -166,6 +157,14 @@ $(function () {
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    function _escHtml(str) {
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
 
     function _applyLayers(raw) {
         LayerNotifyViewModel._instance.layerList(raw.map(function (item) {

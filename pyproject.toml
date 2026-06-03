@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "OctoPrint-LayerNotify"
+version = "0.1.0"
+description = "Visual and sound alerts when specific layers are reached during printing, with optional GCODE commands per layer"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Benaa42", email = "renatobena42@gmail.com" }
+]
+keywords = ["octoprint-plugin"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Home Automation",
+]
+requires-python = ">=3,<4"
+dependencies = ["OctoPrint"]
+
+[project.urls]
+Homepage = "https://github.com/Benaa42/octoprint-layer-notify"
+Source    = "https://github.com/Benaa42/octoprint-layer-notify"
+
+[project.entry-points."octoprint.plugin"]
+layer_notify = "octoprint_layer_notify"
+
+[tool.setuptools.packages.find]
+include = ["octoprint_layer_notify*"]
+
+[tool.setuptools.package-data]
+"octoprint_layer_notify" = ["templates/**", "static/**/*"]
